@@ -1,8 +1,18 @@
 from django.urls import re_path
-from .views.profile import Profiles, MyProfile, Friends
+from .views.profile import Profiles, MyProfile
+from .views.friends import FriendsRequestManager, AcceptFriendRequest
+import x.views.friends as views
+
 
 urlpatterns = [
-    re_path(r'^me', MyProfile.as_view(), name="profile_detail"),
-    re_path(r'^', Profiles.as_view(), name="crud_profile"),
-    re_path(r'^profiles/me/friends/<str:username>', Friends.as_view(), name="friends_detail"),
+    re_path(r'^me$', MyProfile.as_view(), name="profile_detail"),
+    re_path(r'^$', Profiles.as_view(), name="crud_profile"),
+
+    ###########Friends 
+    re_path(r'^me/friends/request/?$', FriendsRequestManager.as_view(), name="friend_detail"),
+    re_path(r'^me/friends/accept/$', AcceptFriendRequest.as_view(), name="accept_friend"),
+    re_path(r'^me/friends/reject/$', views.RejectFriendRequest.as_view(), name="reject_friend_request"),
+    re_path(r'^me/friends/cancel/$', views.CancelFriendRequest.as_view(), name="cancel_friend_request"),
+    re_path(r'^me/friends/delete/$', views.RemoveFriend.as_view(), name="remove_friend"),
+
 ]

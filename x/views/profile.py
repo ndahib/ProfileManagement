@@ -54,13 +54,14 @@ class MyProfile(Profiles):
     def get(self, request, *args, **kwargs):
         query_params = request.query_params
         instance = self.get_object()
-        print("enter here")
 
         if query_params:
             fields_to_retrieve = {}
             for key in query_params.keys():
                 if hasattr(instance, key):
                     fields_to_retrieve[key] = getattr(instance, key)
+                if key == "friends":
+                    fields_to_retrieve["friends"] = instance.friends.all()
             if fields_to_retrieve:
                 return Response(fields_to_retrieve)
 
