@@ -4,15 +4,22 @@ from ..models import FriendShipRequest, Profile
 
 class FriendShipSerializer(serializers.Serializer):
     receiver_id = serializers.IntegerField(write_only=True, required=True)
-    sender_id = serializers.IntegerField(read_only=True)
+    sender_profile = serializers.SerializerMethodField(read_only=True)
+    receiver_profile = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = FriendShipRequest
-        fields = ['receiver_id', 'sender_id']
+        fields = ['receiver_id', 'sender_profile', 'receiver_profile', 'status']
 
+    def get_sender_profile(self, obj):
+        return obj.sender_profile.username
+
+    def get_receiver_profile(self, obj):
+        return obj.receiver_profile.username
+    
     def validate(self, data):
-        sender_id = 1 # to change later by the authUser
         receiver_id = data['receiver_id']
+        sender_id = 1 # to change later with AuthUser
         sender_profile = Profile.objects.filter(id=sender_id).first()
         receiver_profile = Profile.objects.filter(id=receiver_id).first()
 
@@ -117,9 +124,8 @@ class CancelSerializer(serializers.Serializer):
         fields = ['receiver_id', 'sender_id']
 
     def validate(self, data):
-        receiver_id = data['sender_id'] # to change later by the authUser
+        receiver_id = data['receiver_id'] # to change later by the authUser
         sender_id = self.context['request'].user.id # to change later with AuthUser
-        print("-------------->>", sender_id)
         receiver_profile = Profile.objects.filter(id=receiver_id).first()
         sender_profile = Profile.objects.filter(id=sender_id).first()
         friend_request = self.Meta.model.objects.filter(receiver_profile=receiver_profile,

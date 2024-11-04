@@ -9,7 +9,7 @@ urlpatterns = [
     re_path(r'^$', Profiles.as_view(), name="crud_profile"),
 
     ###########Friends 
-    re_path(r'^me/friends/request/?$', FriendsRequestManager.as_view(), name="friend_detail"),
+    re_path(r'^me/friends/request/?$', FriendsRequestManager.as_view(), name="friend_request_manager"),
     re_path(r'^me/friends/accept/$', AcceptFriendRequest.as_view(), name="accept_friend"),
     re_path(r'^me/friends/reject/$', views.RejectFriendRequest.as_view(), name="reject_friend_request"),
     re_path(r'^me/friends/cancel/$', views.CancelFriendRequest.as_view(), name="cancel_friend_request"),
