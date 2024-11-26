@@ -6,18 +6,19 @@ from django.shortcuts import get_object_or_404
 from ..serializers.profile import ProfileSerializer
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.generics import RetrieveUpdateDestroyAPIView, ListCreateAPIView
+from .authentication import AuthenticationWithID, IsAuthenticated
 
 # from rest_framework.permissions import  IsAuthenticated
 
 
 #########################CRUD OPERATIONS#####################################
-class Profiles(ListCreateAPIView,
-               RetrieveUpdateDestroyAPIView):
+class Profiles(ListCreateAPIView, RetrieveUpdateDestroyAPIView):
     
     queryset = Profile.objects.all()
     serializer_class = ProfileSerializer
     filter_backends = [DjangoFilterBackend]
-    # add Permission Later 
+    authentication_classes = [AuthenticationWithID]
+    permission_classes = [IsAuthenticated]
 
     def filter_queryset(self, queryset):
         query_params = self.request.query_params
@@ -34,8 +35,7 @@ class Profiles(ListCreateAPIView,
  
 
     def get_object(self):
-        # print("**************>>", Profile)
-        return get_object_or_404(Profile, username="ndahib") 
+        return get_object_or_404(Profile, id=self.request.user.id) 
         # to change later with username = self.request.user.username (generalize)
 
 
@@ -48,15 +48,16 @@ class Profiles(ListCreateAPIView,
     def partial_update(self, request, *args, **kwargs):
         kwargs['partial'] = True
         
-        if "avatar" in request.data:
-            avatar = request.data["avatar"]
-            if avatar is None or avatar == "":
-                request.data["avatar"] = settings.DEFAULT_AVATAR
+        request_data = request.data
+        for field in ["avatar", "username", "last_name", "first_name"]:
+            if field not in request_data or not request_data[field]:
+                request_data[field] = getattr(request.user, field)
+        print(request_data)
         return super().partial_update(request, *args, **kwargs)
 
 
 
-##########################My Profile##########################
+########################## My Profile ##########################
 class MyProfile(Profiles):
     """
     Retrieve or update the authenticated user's profile.
@@ -78,7 +79,7 @@ class MyProfile(Profiles):
             key: getattr(instance, key) for key in query_params.keys() if hasattr(instance, key)
         }
         if "friends" in fields_to_retrieve:
-            friends_queryset = instance.friends.all()
+            friends_queryset = Profile.objects.all().filter(friends=instance)
             friends_serializer = ProfileSerializer(friends_queryset, many=True)
             fields_to_retrieve["friends"] = friends_serializer.data
 

@@ -2,16 +2,16 @@ from rest_framework import status, generics
 from rest_framework.response import Response
 from ..models import FriendShipRequest, Profile
 from ..serializers.friends import FriendShipSerializer, AcceptFriendSerializer, RejectSerializer, CancelSerializer, RemoveFriendSerializer
-from rest_framework.permissions import IsAuthenticated
 from django.db.models import Q
+from .authentication import AuthenticationWithID, IsAuthenticated
 
 class FriendsRequestManager(generics.GenericAPIView):
 
     serializer_class = FriendShipSerializer
-    # permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [AuthenticationWithID]
 
     def get_queryset(self):
-        # self.request.user = Profile.objects.get(username="ndahib") # to change later
         self.queryset = FriendShipRequest.objects.filter(
                 Q(sender_profile=self.request.user) | Q(receiver_profile=self.request.user)
         )
@@ -21,19 +21,23 @@ class FriendsRequestManager(generics.GenericAPIView):
         query_params = request.query_params
         friend_requests = self.get_queryset()
 
-        if query_params:
-            status_map = {'pending': 0, 'accepted': 1, 'rejected': 2}
-            for request_status in query_params:
-                if request_status in status_map:
-                    friend_requests = friend_requests.filter(status=status_map[request_status])
+        filters = {}
+        for key, value in query_params.items():
+            if key in ("received", "sent"):
+                key = "sender_profile" if key == "sent" else "receiver_profile"
+                filters[f"{key}"] = self.request.user
+            elif key in ("pending", "accepted", "rejected"):
+                filters["status"] = {"pending": 0, "accepted": 1, "rejected": 2}[key]
+
+        friend_requests = self.get_queryset().filter(**filters)
         
         serialized_data = self.get_serializer(friend_requests, many=True).data
         return Response(serialized_data, status=status.HTTP_200_OK)
-
-
+    
     def post(self, request):
-        serializer = self.serializer_class(data=request.data)
-        serializer.is_valid(raise_exception=True)
+        serializer = self.serializer_class(data=request.data, context={'request': request})
+        if not serializer.is_valid(raise_exception=True):
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         serializer.save()
         return Response({"message": "Friend request sent"},
                          status=status.HTTP_201_CREATED)
@@ -41,9 +45,10 @@ class FriendsRequestManager(generics.GenericAPIView):
 
 class AcceptFriendRequest(generics.CreateAPIView):
 
-    ### no need to let the request in db if accepted return accept to send maybe notification to user of alert without status in db
     queryset = FriendShipRequest.objects.all()
     serializer_class = AcceptFriendSerializer
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [AuthenticationWithID]
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data, context={'request': request})
@@ -56,25 +61,30 @@ class AcceptFriendRequest(generics.CreateAPIView):
         serializer.save()
 
 
-class RejectFriendRequest(generics.DestroyAPIView):
+class RejectFriendRequest(generics.UpdateAPIView):
 
     queryset = FriendShipRequest.objects.all()
     serializer_class = RejectSerializer
-    def destroy(self, request, *args, **kwargs):
-        request.user = Profile.objects.get(username="HamzaElmoudden")
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [AuthenticationWithID]
+
+    def post(self, request, *args, **kwargs):
+        print(request.data)
         serializer = self.serializer_class(data=request.data, context={'request': request})
         serializer.is_valid(raise_exception=True)
         instance = serializer.validated_data
-        self.perform_destroy(instance)
+        instance.delete()
         return Response({"message": "Friend request rejected"}, status=status.HTTP_200_OK)
 
 
 class CancelFriendRequest(generics.DestroyAPIView):
 
     queryset = FriendShipRequest.objects.all()
-    serializer_class = CancelSerializer
+    serializer_class = CancelSerializer    
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [AuthenticationWithID]
+
     def post(self, request, *args, **kwargs):
-        request.user = Profile.objects.get(username="ndahib")
         serializer = self.serializer_class(data=request.data, context={'request': request})
         serializer.is_valid(raise_exception=True)
         instance = serializer.validated_data
@@ -85,13 +95,17 @@ class RemoveFriend(generics.GenericAPIView):
 
     queryset = Profile.objects.all()
     serializer_class = RemoveFriendSerializer
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [AuthenticationWithID]
 
     def post(self, request, *args, **kwargs):
-        request.user = Profile.objects.get(username="HamzaElmoudden")
         serializer = self.serializer_class(data=request.data, context={'request': request})
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
+
         user = data['user']
         friend_id = data['friend']
+        friend = Profile.objects.filter(id=friend_id).first()
+        friend.friends.remove(user.id)
         user.friends.remove(friend_id)
         return Response({"message": "Friend removed"}, status=status.HTTP_200_OK)

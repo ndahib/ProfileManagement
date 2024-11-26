@@ -1,0 +1,23 @@
+		<!--
+										${this.matcheHistory.map( match => /* html */ `
+										<li class="match list-group-item d-flex justify-content-between">
+											<div class="player current-profile d-flex flex-column justify-content-center align-items-center">
+												<img src="${this.profile.avatar}" 
+													alt="User Avatar" 
+													class="player-avatar img-fluid
+													${match.profileScore > match.rivalScore? 'winner' : 'loser'}">
+												<span class="me-2 player-score">${match.profileScore}</span>
+											</div>
+											<div class="vs-container d-flex align-items-center flex-column justify-content-center">
+												<span class="vs "><i>VS</i></span>
+												<span class="date">${match.date}</span>
+											</div>
+											<div class="player rival d-flex flex-column justify-content-center align-items-center">
+												<img src="${match.rivalAvatar}" 
+												alt="User Avatar" 
+												class="player-avatar img-fluid
+												${match.profileScore < match.rivalScore? 'winner' : 'loser'}">
+												<span class="me-2 player-score">${match.rivalScore}</span>
+											</div>
+										</li>
+										`).join('')}-->
